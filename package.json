@@ -1,0 +1,8 @@
+{
+  "name": "growth-experiment-lab",
+  "version": "0.1.0",
+  "description": "A/B test analyzer, sample-size planner and ICE backlog for growth teams.",
+  "license": "MIT",
+  "author": "Vishwajeet Kumbhar",
+  "scripts": { "test": "node --test tests/stats.test.mjs" }
+}

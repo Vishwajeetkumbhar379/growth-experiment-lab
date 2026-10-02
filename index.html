@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Growth Experiment Lab</title>
+<meta name="description" content="A/B test analyzer, sample-size planner and ICE backlog for growth teams.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one column of three tool panels under a compact header; each panel = inputs left, live readout right */
+:root{
+  --bg:#F6F5F1;--card:#FFFFFF;--ink:#15171C;--muted:#5E6470;--line:#E3E1DA;
+  --a:#9AA0AE;--b:#5B4FE0;--win:#178A55;--lose:#C2412D;--lean:#B7791F;
+  --f-d:"Space Grotesk",system-ui,sans-serif;--f-b:"Inter",system-ui,sans-serif;--f-m:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1115;--card:#171A21;--ink:#ECEDEF;--muted:#9AA0AA;--line:#272B34;--a:#6B7280;--b:#8E85FF;--win:#3CC487;--lose:#F07A63;--lean:#E8B03F;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F1115;--card:#171A21;--ink:#ECEDEF;--muted:#9AA0AA;--line:#272B34;--a:#6B7280;--b:#8E85FF;--win:#3CC487;--lose:#F07A63;--lean:#E8B03F;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-b);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:clamp(16px,4vw,32px);padding-block:clamp(28px,5vw,56px)}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:16px;margin-bottom:28px}
+h1{font:700 clamp(2rem,5vw,3rem)/1 var(--f-d);letter-spacing:-.03em;margin:0}
+h1 span{color:var(--b)}
+.lede{color:var(--muted);margin:10px 0 0;max-width:52ch}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+nav a{font:500 13px var(--f-b);text-decoration:none;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:var(--card)}
+nav a:hover{color:var(--ink);border-color:var(--ink)}
+section{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:18px;overflow:hidden}
+.head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.head h2{font:700 1.2rem var(--f-d);margin:0;letter-spacing:-.01em}
+.head p{margin:0;color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}
+.inputs{padding:22px;display:grid;gap:14px;border-right:1px solid var(--line);align-content:start}
+.out{padding:22px;display:grid;gap:16px;align-content:start;min-width:0}
+@media (max-width:760px){.grid{grid-template-columns:1fr}.inputs{border-right:0;border-bottom:1px solid var(--line)}}
+label{display:grid;gap:6px;font-size:13px;color:var(--muted)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.var{font:600 12px var(--f-m);letter-spacing:.06em;text-transform:uppercase}
+.var.a{color:var(--a)}.var.b{color:var(--b)}
+input,select{font:500 15px var(--f-m);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-width:0}
+input:focus,select:focus{outline:2px solid var(--b);outline-offset:1px}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:12px}
+.kpi span{display:block;font-size:12px;color:var(--muted)}
+.kpi strong{font:700 1.45rem/1.15 var(--f-d);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+@media (max-width:480px){.kpis{grid-template-columns:1fr 1fr}}
+.verdict{border-radius:12px;padding:14px 16px;font-weight:600;border:1px solid}
+.verdict[data-tone="win"]{color:var(--win);border-color:color-mix(in srgb,var(--win) 40%,transparent);background:color-mix(in srgb,var(--win) 9%,transparent)}
+.verdict[data-tone="lose"]{color:var(--lose);border-color:color-mix(in srgb,var(--lose) 40%,transparent);background:color-mix(in srgb,var(--lose) 9%,transparent)}
+.verdict[data-tone="lean"]{color:var(--lean);border-color:color-mix(in srgb,var(--lean) 40%,transparent);background:color-mix(in srgb,var(--lean) 9%,transparent)}
+.verdict[data-tone="flat"]{color:var(--muted);border-color:var(--line)}
+svg text{fill:var(--muted);font:500 11px var(--f-m)}
+.big{font:700 clamp(2.4rem,6vw,3.6rem)/1 var(--f-d);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.note{font-size:12px;color:var(--muted);margin:0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font:600 11px var(--f-m);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+td input{padding:6px 8px;font-size:14px;width:58px;text-align:center}
+td.idea input{width:100%;text-align:left;font-family:var(--f-b)}
+td.score{font:700 1.05rem var(--f-d);font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:3px;background:var(--b);opacity:.85;margin-top:4px}
+.tablebox{overflow-x:auto;padding:4px 14px 14px}
+.btn{font:600 13px var(--f-b);border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:10px;padding:9px 14px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.row-actions{display:flex;gap:8px;padding:0 22px 18px;flex-wrap:wrap}
+.del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px}
+footer{color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:24px}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Growth Experiment <span>Lab</span></h1>
+      <p class="lede">Three tools growth teams use every week: read an A/B test honestly, plan how long a test needs, and decide which idea to test next.</p>
+    </div>
+    <nav><a href="#analyze">Analyze</a><a href="#plan">Plan</a><a href="#prioritise">Prioritise</a><a href="https://github.com/Vishwajeetkumbhar379/growth-experiment-lab">Code ↗</a></nav>
+  </header>
+
+  <section id="analyze">
+    <div class="head"><h2>Analyze an A/B test</h2><p>Two-proportion z-test plus Bayesian probability</p></div>
+    <div class="grid">
+      <div class="inputs">
+        <div class="pair"><span class="var a">A · control</span><span class="var b">B · variant</span></div>
+        <div class="pair">
+          <label for="nA">Visitors<input id="nA" type="number" min="1" value="12400"></label>
+          <label for="nB">Visitors<input id="nB" type="number" min="1" value="12350"></label>
+        </div>
+        <div class="pair">
+          <label for="cA">Conversions<input id="cA" type="number" min="0" value="372"></label>
+          <label for="cB">Conversions<input id="cB" type="number" min="0" value="441"></label>
+        </div>
+        <label for="alpha">Confidence level
+          <select id="alpha"><option value="0.1">90%</option><option value="0.05" selected>95%</option><option value="0.01">99%</option></select>
+        </label>
+        <p class="note">Example: a new landing-page headline. Change any number.</p>
+      </div>
+      <div class="out">
+        <div class="kpis">
+          <div class="kpi"><span>Conversion A → B</span><strong id="rCr">–</strong></div>
+          <div class="kpi"><span>Relative lift</span><strong id="rLift">–</strong></div>
+          <div class="kpi"><span>p-value</span><strong id="rP">–</strong></div>
+          <div class="kpi"><span>Chance B beats A</span><strong id="rProb">–</strong></div>
+          <div class="kpi" style="grid-column:span 2"><span id="rCiLabel">Difference, 95% interval</span><strong id="rCi">–</strong></div>
+        </div>
+        <svg id="curves" viewBox="0 0 520 150" role="img" aria-label="Likely conversion rates for A and B"></svg>
+        <div class="verdict" id="verdict" data-tone="flat">–</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="plan">
+    <div class="head"><h2>Plan a test</h2><p>Visitors needed and how many days to run</p></div>
+    <div class="grid">
+      <div class="inputs">
+        <label for="base">Current conversion rate (%)<input id="base" type="number" step="0.1" min="0.1" max="99" value="3"></label>
+        <label for="mde">Smallest lift worth detecting (relative %)<input id="mde" type="number" step="1" min="1" value="15"></label>
+        <div class="pair">
+          <label for="daily">Daily visitors<input id="daily" type="number" min="1" value="1800"></label>
+          <label for="variants">Variants (incl. control)<input id="variants" type="number" min="2" max="6" value="2"></label>
+        </div>
+        <div class="pair">
+          <label for="palpha">Confidence<select id="palpha"><option value="0.1">90%</option><option value="0.05" selected>95%</option><option value="0.01">99%</option></select></label>
+          <label for="power">Power<select id="power"><option value="0.8" selected>80%</option><option value="0.9">90%</option></select></label>
+        </div>
+      </div>
+      <div class="out">
+        <div><span class="note">Visitors per variant</span><div class="big" id="pN">–</div></div>
+        <div class="kpis">
+          <div class="kpi"><span>Total visitors</span><strong id="pTotal">–</strong></div>
+          <div class="kpi"><span>Run for</span><strong id="pDays">–</strong></div>
+          <div class="kpi"><span>Detects</span><strong id="pDetect">–</strong></div>
+        </div>
+        <p class="note" id="pAdvice">–</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="prioritise">
+    <div class="head"><h2>Prioritise the backlog</h2><p>ICE: impact, confidence, ease, each 1-10</p></div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Idea</th><th>Impact</th><th>Confidence</th><th>Ease</th><th>ICE</th><th></th></tr></thead>
+        <tbody id="ideas"></tbody>
+      </table>
+    </div>
+    <div class="row-actions"><button class="btn" id="add" type="button">Add idea</button><button class="btn ghost" id="reset" type="button">Reset examples</button></div>
+  </section>
+
+  <footer><span>Built by <a href="https://www.linkedin.com/in/vishwajeetkumbhar379">Vishwajeet Kumbhar</a> · numbers stay in your browser</span><a href="https://github.com/Vishwajeetkumbhar379/growth-experiment-lab">Source on GitHub</a></footer>
+</div>
+
+<script src="stats.js"></script>
+<script>
+(function () {
+  const S = window.GrowthStats, $ = (id) => document.getElementById(id);
+  const pct = (x, d = 2) => (x * 100).toFixed(d) + "%";
+  const fmt = (n) => Math.round(n).toLocaleString("en-GB");
+
+  // ---------- Analyze ----------
+  function curve(svg, r, nA, nB) {
+    const W = 520, H = 150, pad = 18;
+    const sd = (p, n) => Math.sqrt(p * (1 - p) / n) || 1e-6;
+    const sA = sd(r.pA, nA), sB = sd(r.pB, nB);
+    const lo = Math.max(0, Math.min(r.pA - 4 * sA, r.pB - 4 * sB)), hi = Math.max(r.pA + 4 * sA, r.pB + 4 * sB);
+    const x = (v) => pad + (v - lo) / (hi - lo) * (W - 2 * pad);
+    const pdf = (v, m, s) => Math.exp(-0.5 * ((v - m) / s) ** 2) / s;
+    const peak = Math.max(pdf(r.pA, r.pA, sA), pdf(r.pB, r.pB, sB));
+    const y = (d) => H - 26 - d / peak * (H - 46);
+    const path = (m, s) => { let d = ""; for (let i = 0; i <= 120; i++) { const v = lo + (hi - lo) * i / 120; d += (i ? "L" : "M") + x(v).toFixed(1) + "," + y(pdf(v, m, s)).toFixed(1); } return d; };
+    const area = (m, s) => path(m, s) + `L${x(hi)},${H - 26}L${x(lo)},${H - 26}Z`;
+    svg.innerHTML =
+      `<line x1="${pad}" x2="${W - pad}" y1="${H - 26}" y2="${H - 26}" stroke="var(--line)"/>` +
+      `<path d="${area(r.pA, sA)}" fill="var(--a)" opacity=".18"/><path d="${path(r.pA, sA)}" fill="none" stroke="var(--a)" stroke-width="2"/>` +
+      `<path d="${area(r.pB, sB)}" fill="var(--b)" opacity=".18"/><path d="${path(r.pB, sB)}" fill="none" stroke="var(--b)" stroke-width="2"/>` +
+      `<text x="${x(r.pA)}" y="${y(pdf(r.pA, r.pA, sA)) - 6}" text-anchor="middle">A ${pct(r.pA)}</text>` +
+      `<text x="${x(r.pB)}" y="${y(pdf(r.pB, r.pB, sB)) - 6}" text-anchor="middle" style="fill:var(--b)">B ${pct(r.pB)}</text>` +
+      `<text x="${pad}" y="${H - 8}">${pct(lo)}</text><text x="${W - pad}" y="${H - 8}" text-anchor="end">${pct(hi)}</text>` +
+      `<text x="${W / 2}" y="${H - 8}" text-anchor="middle">likely true conversion rate</text>`;
+  }
+  function analyze() {
+    const nA = +$("nA").value, cA = +$("cA").value, nB = +$("nB").value, cB = +$("cB").value, a = +$("alpha").value;
+    try {
+      const r = S.abTest(nA, cA, nB, cB, a);
+      $("rCr").textContent = pct(r.pA) + " → " + pct(r.pB);
+      $("rLift").textContent = (r.uplift >= 0 ? "+" : "") + pct(r.uplift, 1);
+      $("rP").textContent = r.pValue < 0.001 ? "< 0.001" : r.pValue.toFixed(3);
+      $("rProb").textContent = pct(r.probBBeatsA, 1);
+      $("rCiLabel").textContent = `Difference, ${Math.round((1 - a) * 100)}% interval (percentage points)`;
+      $("rCi").textContent = `${(r.ciLow * 100).toFixed(2)} to ${(r.ciHigh * 100).toFixed(2)}`;
+      const v = S.verdict(r);
+      $("verdict").dataset.tone = v.tone; $("verdict").textContent = v.text;
+      curve($("curves"), r, nA, nB);
+    } catch (e) {
+      $("verdict").dataset.tone = "lose"; $("verdict").textContent = "Check the inputs: conversions can't be more than visitors.";
+    }
+  }
+  ["nA", "cA", "nB", "cB", "alpha"].forEach((id) => $(id).addEventListener("input", analyze));
+
+  // ---------- Plan ----------
+  function plan() {
+    try {
+      const base = +$("base").value / 100, mde = +$("mde").value / 100, k = Math.max(2, +$("variants").value);
+      const alpha = +$("palpha").value / (k - 1); // Bonferroni for multiple variants
+      const n = S.sampleSize(base, mde, alpha, +$("power").value);
+      const days = S.duration(n, k, +$("daily").value);
+      $("pN").textContent = fmt(n);
+      $("pTotal").textContent = fmt(n * k);
+      $("pDays").textContent = days === Infinity ? "–" : days + (days === 1 ? " day" : " days");
+      $("pDetect").textContent = pct(base, 1) + " → " + pct(base * (1 + mde), 1);
+      const weeks = Math.ceil(days / 7);
+      $("pAdvice").textContent = days > 42
+        ? "Over six weeks: test a bolder change (bigger lift), use a higher-traffic page, or measure an earlier step in the funnel."
+        : `Run full weeks to cover weekday and weekend behaviour: plan ${weeks} week${weeks > 1 ? "s" : ""}, and decide only at the end.` + (k > 2 ? " Confidence is adjusted for multiple variants." : "");
+    } catch (e) {
+      $("pN").textContent = "–"; $("pAdvice").textContent = "That lift would push the conversion rate past 100%. Try a smaller lift.";
+    }
+  }
+  ["base", "mde", "daily", "variants", "palpha", "power"].forEach((id) => $(id).addEventListener("input", plan));
+
+  // ---------- Prioritise ----------
+  const EXAMPLES = [
+    ["Social proof (review count) next to the checkout button", 7, 7, 9],
+    ["Free shipping threshold banner on product pages", 8, 6, 8],
+    ["Creator UGC video replacing the hero image", 8, 5, 6],
+    ["Exit-intent offer for first-time visitors", 6, 5, 8],
+    ["Shorten sign-up form from 7 fields to 3", 7, 8, 5],
+    ["Personalised onboarding email sequence", 9, 6, 4],
+  ];
+  let ideas;
+  try { ideas = JSON.parse(localStorage.getItem("gel-ideas")) || null; } catch (e) { ideas = null; }
+  if (!Array.isArray(ideas)) ideas = EXAMPLES.map((r) => r.slice());
+  const save = () => { try { localStorage.setItem("gel-ideas", JSON.stringify(ideas)); } catch (e) {} };
+  function renderIdeas(focusIdx, focusField) {
+    const sorted = ideas.map((r, i) => ({ r, i, s: S.ice(+r[1], +r[2], +r[3]) })).sort((a, b) => b.s - a.s);
+    const tb = $("ideas"); tb.innerHTML = "";
+    sorted.forEach(({ r, i, s }) => {
+      const tr = document.createElement("tr");
+      const cell = (k, cls) => { const td = document.createElement("td"); if (cls) td.className = cls; const inp = document.createElement("input");
+        inp.id = `idea-${i}-${k}`; inp.value = r[k]; if (k) { inp.type = "number"; inp.min = 1; inp.max = 10; } inp.setAttribute("aria-label", ["Idea", "Impact", "Confidence", "Ease"][k]);
+        inp.addEventListener("change", () => { r[k] = k ? Math.max(1, Math.min(10, +inp.value || 1)) : inp.value; save(); renderIdeas(); });
+        td.appendChild(inp); return td; };
+      tr.append(cell(0, "idea"), cell(1), cell(2), cell(3));
+      const sc = document.createElement("td"); sc.className = "score"; sc.innerHTML = `${s.toFixed(1)}<div class="bar" style="width:${s * 10}%"></div>`;
+      const del = document.createElement("td"); const b = document.createElement("button"); b.className = "del"; b.type = "button"; b.textContent = "×"; b.setAttribute("aria-label", "Remove idea");
+      b.addEventListener("click", () => { ideas.splice(i, 1); save(); renderIdeas(); }); del.appendChild(b);
+      tr.append(sc, del); tb.appendChild(tr);
+    });
+  }
+  $("add").addEventListener("click", () => { ideas.push(["New idea", 5, 5, 5]); save(); renderIdeas(); });
+  $("reset").addEventListener("click", () => { ideas = EXAMPLES.map((r) => r.slice()); save(); renderIdeas(); });
+
+  analyze(); plan(); renderIdeas();
+})();
+</script>
+</body>
+</html>
