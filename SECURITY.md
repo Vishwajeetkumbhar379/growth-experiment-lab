@@ -1,21 +1,18 @@
 # Security Policy
 
-## Supported Versions
+## Scope
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Growth Experiment Lab is a static, client-side web app. It has no server, no accounts and no tracking. Everything you enter stays in your browser (localStorage) and is never sent anywhere.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+Please report security issues privately, not in a public issue.
 
-Use this section to tell people how to report a vulnerability.
+- Use GitHub's "Report a vulnerability" button under the Security tab of this repository, or
+- Email vishwajeetkumbhar379@gmail.com
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+I aim to reply within 7 days and will credit reporters who want credit.
+
+## Supported versions
+
+Only the latest version on `main` is supported.
