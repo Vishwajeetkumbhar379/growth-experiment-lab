@@ -20,7 +20,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - run: mkdir site && cp index.html stats.js site/
+      - run: mkdir site && mkdir -p site/docs && cp index.html stats.js site/ && cp docs/og.png site/docs/
       - uses: actions/configure-pages@v5
         with:
           enablement: true
